@@ -1,14 +1,1 @@
-{
-    "roommates": [
-        {
-            "id": "f2d96a",
-            "nombre": "Bryan Ortiz"
-        },
-        
-        {
-            "id": "0748b1",
-            "nombre": "Veera Waara"
-        }
-    ],
-    "gastos": []
-}
+{"roommates":[{"id":"7048d1","nombre":"Hamza Lilletvedt","debe":12000},{"id":"4b3fde","nombre":"Beatrix Heidt","debe":62000}],"gastos":[{"id":"0f648e","roommate":"Beatrix Heidt","descripcion":"Articulos de oficina","monto":12000},{"id":"3968fa","roommate":"Beatrix Heidt","descripcion":"Articulos deportivos","monto":50000}]}
