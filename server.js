@@ -14,17 +14,34 @@ app.use(express.static('static'));
 app.use( express.json() );
 app.use( express.urlencoded({ extended: true }) );
 
+
+// get de gastos
+app.get('/gastos', async(req, res)=>{
+    let database = await fs.readFile('db.json', 'utf-8')
+    database = JSON.parse(database)
+    let gastos = database.gastos
+    res.send({gastos})
+})
+
+// get de roomate 
+app.get('/roommates', async(req, res)=>{
+    let database = await fs.readFile('db.json', 'utf-8')
+    database = JSON.parse(database)
+    let roommates = database.roommates
+    res.send({roommates})
+})
 //obteniendo los datos
 async function newroommate(){
     const datos = await axios.get('https://randomuser.me/api')
     //desempaquetando
     const randomuser = datos.data.results[0]
     const newuser = {
-        // generamos el ID se utiliza slice para disminuir a 30 los caracteres
+        // generamos el ID se utiliza slice elimina 30 caracteres
         id : uuid.v4().slice(30),
         nombre: randomuser.name.first + ' ' + randomuser.name.last,
         
     }
+    
     return newuser
 }
 
@@ -82,21 +99,6 @@ app.post('/gasto', async (req, res) => {
     
 });
 
-// get de roomate 
-app.get('/roommates', async(req, res)=>{
-    let database = await fs.readFile('db.json', 'utf-8')
-    database = JSON.parse(database)
-    let roommates = database.roommates
-    res.send({roommates})
-})
-// get de gastos
-app.get('/gastos', async(req, res)=>{
-    let database = await fs.readFile('db.json', 'utf-8')
-    database = JSON.parse(database)
-    let gastos = database.gastos
-    res.send({gastos})
-})
-
 // modificar gastos
 app.put('/gasto', async (req, res) => {
     //guardamos el id a modificar
@@ -104,9 +106,10 @@ app.put('/gasto', async (req, res) => {
     
     let body;
     req.on('data', (payload) => {
+    // /transformando de un string a un objeto
       body = JSON.parse(payload);
-     
     });
+
     req.on('end', async() => {
                  
         //leemos el archivo creado
@@ -115,68 +118,45 @@ app.put('/gasto', async (req, res) => {
         //transformando de un string a un objeto
         db = JSON.parse(db)
         
-        
+        // buscamos el id unico asociado al gasto
         let gasto = db.gastos.find(g=>g.id === id )
+        // creamos la variable para actualizar el monto del debe
+        let oldgasto = gasto.monto
+
         gasto.roommate = body.roommate
         gasto.monto = body.monto
         gasto.descripcion = body.descripcion
-        const roommate = db.roommates.find(r => r.nombre == body.roommate);
-        const gastosRoommate = db.gastos.filter( g => g.roommate = roommate.nombre).map(g => g.monto).reduce( (x, y) => x + y);
-        roommate.debe = gastosRoommate;
-        // finalmente guardo el nuevo gastos
+        // creamos la variable roommate para encontrar el nombre
+        let roommate = db.roommates.find(r => r.nombre == body.roommate);
+        //guardamos el valor antiguo en una variable 
+        let roommateold = roommate.debe
+        // guardamos el nuevo valor en una variable
+        roommate.debe = roommate.debe + (gasto.monto - oldgasto)
+        
+                
+        // se guarda el nuevo gastos
         await fs.writeFile('db.json', JSON.stringify(db), 'utf-8') 
         res.send({todo:'ok'})
     });
     
 });
-/*
-// borrando archivo   
-app.delete('/eliminar', async (req, res)=>{
-    const id = req.query.id;   
-    console.log(id)
-    let body;
-    req.on('data', (payload) => {
-      body = JSON.parse(payload);
-     
-    });
-    req.on('end', async() => {
-              
-        //leemos el archivo creado
-        let db = await fs.readFile('db.json', 'utf-8')
 
-        //transformando de un string a un objeto
-        db = JSON.parse(db)
-
-        const gasto = db.gastos.find(g=>g.id === id )
-        console.log(gasto)
-        gasto.roommate = body.roommate
-        gasto.monto = body.monto
-        gasto.descripcion = body.descripcion
-        const roommate = db.roommates.find(r => r.nombre == body.roommate);
-        const gastosRoommate = db.gastos.filter( g => g.roommate = roommate.nombre).map(g => g.monto).reduce( (x, y) => x + y);
-        roommate.debe = gastosRoommate;
-        
-        
-        // borramos el archivo
-        await fs.unlike('db.json', JSON.stringify(db), 'utf-8') 
-        res.send({todo:'ok'})
-        
-    });   
-         
-})
-*/
 // borrando archivo   
-app.get('/eliminar', (req, res)=>{
+
+app.delete('/gasto', async(req, res) => { 
     const id = req.query.id; 
-    console.log(id);
-    const archivo = `db.json/${req.query.id}`;
-    fs.unlink(archivo, function(){
-        
-        res.send('archivo borrado');
-    });  
-    console.log('archivo borrado correctamente');
-     
-})
+    // lee el archivo de la base de datos
+    let db = await fs.readFile("db.json", 'utf-8'); 
+    db = JSON.parse(db); 
+    // extrae los gastos distintos al id buscado y los guarda en una variable
+    const bgastos = db.gastos.filter(x => x.id !== id); 
+    console.log(bgastos)
+    //guarda los datos en la base de datos
+    db.gastos = bgastos 
+    //escribo la nueva ainformacion
+    await fs.writeFile('db.json', JSON.stringify(db), 'utf-8'); 
+    res.send(db); 
+}); 
 
 //correr el servidor
 app.listen(3000, function(){
